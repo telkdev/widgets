@@ -97,9 +97,7 @@ class BaseWidget {
     }
     
     if (this.#state === 'done' || this.#state === 'none') return;
-    
-    // Update state and emit events immediately for test compatibility
-    this.state = 'done';
+        this.state = 'done';
     this.logger.log('Widget done:', this.id);
     this.events.emit('done', this);
     
@@ -126,7 +124,6 @@ class BaseWidget {
   destroy() {
     if (this.#state === 'none') return;
     
-    // Only allow destroy from 'done' or 'fail' states
     if (this.#state !== 'done' && this.#state !== 'fail' && this.#state !== 'initializing') {
       this.logger.log(`Widget ${this.id} must be in 'done' or 'fail' state to be destroyed`);
       return;

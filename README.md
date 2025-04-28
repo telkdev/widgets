@@ -33,15 +33,5 @@ npm start
 
 Then open your browser and navigate to:
 ```
-http://localhost:3000/index.html
-```
-
-## Testing
-
-```bash
-# Run tests once
-npm test
-
-# Run tests in watch mode
-npm run test:watch
+http://localhost:3000
 ```
