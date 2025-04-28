@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget System Demo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <h1>Widget System Demo</h1>
+
+    <div class="container">
+      <div>
+        <div class="controls">
+          <button id="btn-init">Initialize</button>
+          <button id="btn-destroy">Destroy</button>
+          <button id="btn-done">Done</button>
+          <button id="btn-fail">Fail</button>
+        </div>
+
+        <div class="tree" id="root">
+          <div class="node" widget="widgets/CounterWidget">
+            <div class="node-content">
+              <span>Counter Widget</span>
+              <span class="node-type">widgets/CounterWidget</span>
+            </div>
+            <div class="node" widget="widgets/IncrementWidget">
+              <div class="node-content">
+                <span>Increment Widget</span>
+                <span class="node-type">widgets/IncrementWidget</span>
+              </div>
+              <div class="node">
+                <div class="node-content">
+                  <span>Regular Node</span>
+                  <span class="node-type">no widget</span>
+                </div>
+                <div class="node" widget="widgets/HoverWidget">
+                  <div class="node-content">
+                    <span>Hover Widget</span>
+                    <span class="node-type">widgets/HoverWidget</span>
+                  </div>
+                </div>
+                <div class="node" widget="widgets/CounterWidget">
+                  <div class="node-content">
+                    <span>Widget CounterWidget</span>
+                    <span class="node-type">widgets/CounterWidget</span>
+                  </div>
+                </div>
+                <div class="node" widget="widgets/HoverWidget">
+                  <div class="node-content">
+                    <span>Hover Widget</span>
+                    <span class="node-type">widgets/HoverWidget</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="node">
+              <div class="node-content">
+                <span>Regular Node</span>
+                <span class="node-type">no widget</span>
+              </div>
+              <div class="node" widget="widgets/AnimationWidget">
+                <div class="node-content">
+                  <span>Animation Widget</span>
+                  <span class="node-type">widgets/AnimationWidget</span>
+                </div>
+                  <div class="node" widget="widgets/HoverWidget">
+                    <div class="node-content">
+                      <span>Hover Widget</span>
+                      <span class="node-type">widgets/HoverWidget</span>
+                    </div>
+                  </div>
+                
+              </div>
+            </div>
+          </div>
+          <div class="node">Regular Node (no widget)</div>
+        </div>
+
+        <div class="widget-legend">
+          <div class="legend-item">
+            <div class="legend-color legend-none"></div>
+            <span>Not Initialized</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color legend-initializing"></div>
+            <span>Initializing</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color legend-done"></div>
+            <span>Done</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color legend-failed"></div>
+            <span>Failed</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="info" id="info">
+          <h3>Selected Node</h3>
+          <div id="selector-info">None selected</div>
+        </div>
+        
+        <div class="log-title">Event Log</div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { X } from "./X.js";
+      const x = new X();
+
+      let selectedEl = null;
+
+      document.getElementById("root").addEventListener("click", (e) => {
+        const node = e.target.closest(".node");
+        if (!node || !document.getElementById("root").contains(node)) return;
+        e.stopPropagation();
+        if (selectedEl) selectedEl.classList.remove("selected");
+        selectedEl = node;
+        selectedEl.classList.add("selected");
+        
+        const selector = getSelector(selectedEl);
+        const widgetType = selectedEl.getAttribute('widget') || 'None (regular DOM node)';
+        
+        document.getElementById("selector-info").innerHTML = `
+          <strong>Selector:</strong> ${selector}<br>
+          <strong>Widget Type:</strong> ${widgetType}
+        `;
+        
+        logEvent('info', `Selected: ${selector}`);
+      });
+
+      function getWidgetState(el) {
+        if (el.classList.contains('widget-initializing')) return 'Initializing';
+        if (el.classList.contains('widget-done')) return 'Done';
+        if (el.classList.contains('widget-failed')) return 'Failed';
+        return 'Not Initialized';
+      }
+
+      function getSelector(el) {
+        if (!el || el === document.body) return "body";
+        const path = [];
+        let currentEl = el;
+        while (currentEl && currentEl.id !== "root") {
+          const parent = currentEl.parentNode;
+          if (!parent) break;
+
+          const nodeSiblings = Array.from(parent.children).filter(
+            child => child.classList && child.classList.contains("node")
+          );
+          const widgetAttr = currentEl.getAttribute('widget');
+          let baseSelector = widgetAttr ? `widget=${widgetAttr}` : currentEl.tagName.toLowerCase();
+
+          const sameTypeSiblings = nodeSiblings.filter(child => {
+            const childWidget = child.getAttribute('widget');
+            return (childWidget ? `widget=${childWidget}` : child.tagName.toLowerCase()) === baseSelector;
+          });
+
+          let selector = baseSelector;
+          if (sameTypeSiblings.length > 1) {
+            const index = sameTypeSiblings.indexOf(currentEl);
+            if (index > 0) {
+              selector += `:nth-child(${index + 1})`;
+            }
+          }
+          path.unshift(selector);
+          currentEl = parent;
+        }
+        return "#root > " + path.join(" > ");
+      }
+
+      function logEvent(type, message) {
+        const log = document.getElementById("log");
+        const entry = document.createElement("div");
+        entry.classList.add(type);
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        log.prepend(entry);
+      }
+
+      document.getElementById("btn-init").onclick = () => {
+        if (!selectedEl) {
+          logEvent('error', 'No node selected');
+          return;
+        }
+        
+        const path = getSelector(selectedEl);
+        logEvent('info', `Initializing: ${path}`);
+
+        x.init(selectedEl, (errors) => {
+          if (errors && errors.length) {
+            // Log errors to both UI and console for better debugging
+            logEvent('error', `Initialization completed with errors: ${JSON.stringify(errors)}`);
+            console.error('Widget initialization errors:', errors);
+          } else {
+            logEvent('success', `Initialization completed: ${path}`);
+          }
+        });
+      };
+
+      document.getElementById("btn-done").onclick = () => {
+        if (!selectedEl) {
+          logEvent('error', 'No node selected');
+          return;
+        }
+        
+        const path = getSelector(selectedEl);
+        logEvent('info', `Marking as done: ${path}`);
+        x.done(selectedEl);
+      };
+
+      document.getElementById("btn-destroy").onclick = () => {
+        if (!selectedEl) {
+          logEvent('error', 'No node selected');
+          return;
+        }
+        
+        const path = getSelector(selectedEl);
+        logEvent('info', `Destroying: ${path}`);
+        x.destroy(selectedEl);
+      };
+
+      document.getElementById("btn-fail").onclick = () => {
+        if (!selectedEl) {
+          logEvent('error', 'No node selected');
+          return;
+        }
+        
+        const path = getSelector(selectedEl);
+        const widgetType = selectedEl.getAttribute('widget') || '';
+        
+        logEvent('error', `Failing: ${path}`);
+        
+        x.fail(selectedEl);
+      };
+    </script>
+  </body>
+</html>
